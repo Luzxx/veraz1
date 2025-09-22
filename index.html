@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VerazYa – Pago</title>
-  <!-- SDK oficial de Mercado Pago -->
+  <title>VerazYa – Pago (prueba $1)</title>
   <script src="https://sdk.mercadopago.com/js/v2"></script>
   <style>
     body{font-family:system-ui, Arial, sans-serif; background:#0b0d10; color:#e5e7eb; margin:0; padding:24px}
@@ -19,7 +18,7 @@
 <body>
   <div class="card">
     <h2>Obtené tu Informe Veraz</h2>
-    <p class="muted">Completá tus datos y pagá de forma segura con Mercado Pago.</p>
+    <p class="muted">Prueba de cobro con Mercado Pago (monto: $1 ARS).</p>
 
     <form id="formCompra">
       <div class="row">
@@ -56,19 +55,18 @@
 
     <hr style="border:0;border-top:1px solid #1e2631;margin:16px 0">
 
-    <!-- Aquí se renderiza el botón Wallet -->
     <div id="wallet_container"></div>
     <p id="msg" class="muted"></p>
   </div>
 
   <script>
     // 👉 PONÉ ACÁ TU /exec MÁS RECIENTE
-    const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxQK4jL7_z29N-Z4u-_GtejH6W8x9Ho2z2Wiy8JOEeqPKYVP7FpyanwQiMeipILnUeC7A/exec";
-    const PRECIO_AR  = 1; // ARS
+    const WEBAPP_URL = "PEGÁ_ACÁ_TU_URL_EXEC";
+    // 👇 Monto de prueba
+    const PRECIO_AR  = 1;
 
     let mp, bricksBuilder, walletController;
 
-    // Util: serializar form a objeto
     function serializeForm(form){
       const fd = new FormData(form);
       const o = {};
@@ -76,7 +74,6 @@
       return o;
     }
 
-    // 1) Traer la public key desde tu Apps Script (?route=public_key)
     async function getPublicKey(){
       const r = await fetch(WEBAPP_URL + '?route=public_key');
       const j = await r.json();
@@ -84,30 +81,24 @@
       return j.public_key;
     }
 
-    // 2) Crear preferencia en tu Apps Script (POST text/plain para evitar preflight)
     async function createPreference(payload){
       const r = await fetch(WEBAPP_URL + '?route=create_bricks', {
         method: 'POST',
-        headers: {'Content-Type':'text/plain;charset=utf-8'}, // 👈 evita preflight
+        headers: {'Content-Type':'text/plain;charset=utf-8'},
         body: JSON.stringify(payload)
       });
       const j = await r.json();
       if(!j.ok) throw new Error(j.error || 'No se pudo crear preferencia');
-      // el backend debe devolver { ok:true, preferenceId, orderId, init_point? }
-      return j;
+      return j; // { ok, preferenceId, orderId }
     }
 
-    // 3) Renderizar Wallet con la preferenceId
     async function renderWallet(preferenceId){
       if (walletController) {
         try { await walletController.unmount(); } catch(e){}
       }
       walletController = await bricksBuilder.create('wallet', 'wallet_container', {
         initialization: { preferenceId },
-        customization: {
-          // Opcional: mostrar/ocultar métodos, estilos, etc.
-          texts: { valueProp: 'smart_option' }
-        },
+        customization: { texts: { valueProp: 'smart_option' } },
         callbacks: {
           onReady: () => console.log('Wallet ready'),
           onError: (err) => { console.error(err); alert('Error en Wallet'); }
@@ -115,7 +106,6 @@
       });
     }
 
-    // 4) Flujo
     (async function init(){
       try{
         const publicKey = await getPublicKey();
@@ -127,7 +117,6 @@
       }
     })();
 
-    // 5) Submit del formulario: crea preferencia y muestra el botón Wallet
     document.getElementById('formCompra').addEventListener('submit', async (e)=>{
       e.preventDefault();
       const msg = document.getElementById('msg');
@@ -135,10 +124,7 @@
 
       try{
         const data = serializeForm(e.currentTarget);
-        const payload = {
-          ...data,
-          monto: PRECIO_AR  1;// AR$
-        };
+        const payload = { ...data, monto: PRECIO_AR }; // 👈 $1
         const pref = await createPreference(payload);
         await renderWallet(pref.preferenceId);
         msg.textContent = 'Elegí el método y pagá de forma segura.';
@@ -151,6 +137,5 @@
   </script>
 </body>
 </html>
-
 
 
