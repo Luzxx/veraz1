@@ -137,7 +137,7 @@
         const data = serializeForm(e.currentTarget);
         const payload = {
           ...data,
-          monto: PRECIO_AR  // AR$
+          monto: PRECIO_AR  1;// AR$
         };
         const pref = await createPreference(payload);
         await renderWallet(pref.preferenceId);
@@ -151,5 +151,6 @@
   </script>
 </body>
 </html>
+
 
 
