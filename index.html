@@ -2,122 +2,150 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VerazYa – Informe Veraz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VerazYa – Pago</title>
+  <!-- SDK oficial de Mercado Pago -->
   <script src="https://sdk.mercadopago.com/js/v2"></script>
   <style>
-    body{font-family:system-ui,Inter,Arial;margin:0;background:#0b0d10;color:#e5e7eb}
-    .container{max-width:1000px;margin:24px auto;padding:0 16px}
-    .grid{display:grid;grid-template-columns:1fr 1fr; gap:16px}
-    form, .card{background:#12151a;border:1px solid #1f2630;border-radius:14px;padding:16px}
-    input,textarea{width:100%;background:#0f141b;border:1px solid #232b36;color:#fff;padding:.9rem;border-radius:12px;outline:none}
-    label{font-size:.9rem;color:#9aa3af;display:block;margin:10px 0 6px}
-    button{background:#e11d48;color:#fff;border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
-    #wallet_container{margin-top:10px}
-    @media (max-width: 900px){.grid{grid-template-columns:1fr}}
+    body{font-family:system-ui, Arial, sans-serif; background:#0b0d10; color:#e5e7eb; margin:0; padding:24px}
+    .card{max-width:680px; margin:0 auto; background:#12151a; border:1px solid #1e2631; border-radius:14px; padding:16px}
+    label{display:block; font-size:.9rem; color:#9aa3af; margin:.6rem 0 .25rem}
+    input,textarea{width:100%; padding:.8rem; border-radius:10px; border:1px solid #232b36; background:#0f141b; color:#fff}
+    button{margin-top:14px; background:#e11d48; color:#fff; border:0; padding:.9rem 1.1rem; border-radius:12px; cursor:pointer; font-weight:700}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .muted{color:#9aa3af}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Obtené tu Informe Veraz en minutos</h1>
-    <div class="grid">
-      <form id="formCompra">
-        <div class="row">
-          <label>Nombre</label>
-          <input id="nombre" name="nombre" required placeholder="Tu nombre">
-          <label>Apellido</label>
-          <input id="apellido" name="apellido" required placeholder="Tu apellido">
-          <label>DNI</label>
-          <input id="dni" name="dni" required inputmode="numeric" pattern="[0-9]{7,9}">
-          <label>Email</label>
-          <input id="email" name="email" type="email" required>
-          <label>WhatsApp</label>
-          <input id="whatsapp" name="whatsapp" required>
-          <label>Comentarios</label>
-          <textarea id="notas" name="notas" rows="3"></textarea>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
-          <input id="ok" type="checkbox" required><span>Acepto la política de privacidad</span>
-        </div>
-        <button type="submit" id="continuar">Continuar</button>
-      </form>
+  <div class="card">
+    <h2>Obtené tu Informe Veraz</h2>
+    <p class="muted">Completá tus datos y pagá de forma segura con Mercado Pago.</p>
 
-      <div class="card">
-        <h3>Pago online</h3>
-        <p>Elegí pagar con tarjeta o con tu cuenta de Mercado Pago.</p>
-        <div id="wallet_container"></div>
+    <form id="formCompra">
+      <div class="row">
+        <div>
+          <label>Nombre</label>
+          <input name="nombre" required placeholder="Tu nombre" />
+        </div>
+        <div>
+          <label>Apellido</label>
+          <input name="apellido" required placeholder="Tu apellido" />
+        </div>
       </div>
-    </div>
+      <div class="row">
+        <div>
+          <label>DNI</label>
+          <input name="dni" required inputmode="numeric" />
+        </div>
+        <div>
+          <label>WhatsApp</label>
+          <input name="whatsapp" required inputmode="tel" />
+        </div>
+      </div>
+      <div>
+        <label>Email</label>
+        <input name="email" type="email" required />
+      </div>
+      <div>
+        <label>Comentarios (opcional)</label>
+        <textarea name="notas" rows="3"></textarea>
+      </div>
+
+      <button type="submit">Continuar</button>
+    </form>
+
+    <hr style="border:0;border-top:1px solid #1e2631;margin:16px 0">
+
+    <!-- Aquí se renderiza el botón Wallet -->
+    <div id="wallet_container"></div>
+    <p id="msg" class="muted"></p>
   </div>
 
   <script>
-    // 🔁 PONÉ ACÁ TU /exec
-    const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxQK4jL7_z29N-Z4u-_GtejH6W8x9Ho2z2Wiy8JOEeqPKYVP7FpyanwQiMeipILnUeC7A/exec";
+    // 👉 PONÉ ACÁ TU /exec MÁS RECIENTE
+    const WEBAPP_URL = "PEGÁ_ACÁ_TU_URL_EXEC";
+    const PRECIO_AR  = 8000; // ARS
 
-    const form = document.getElementById('formCompra');
-    const walletContainerId = 'wallet_container';
-    let bricksBuilder = null;
+    let mp, bricksBuilder, walletController;
 
-    async function getPublicKey(){
-      const r = await fetch(WEBAPP_URL + '?route=public_key');
-      const j = await r.json();
-      if(!j.ok) throw new Error(j.error || 'Sin public key');
-      return j.public_key;
-    }
-
-    async function createPreference(payload){
-      const r = await fetch(WEBAPP_URL + '?route=create_bricks', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const j = await r.json();
-      if(!j.ok) throw new Error(j.error || 'No se pudo crear preferencia');
-      return j; // { ok, preferenceId, orderId }
-    }
-
-    function serialize(form){
+    // Util: serializar form a objeto
+    function serializeForm(form){
       const fd = new FormData(form);
       const o = {};
       for (const [k,v] of fd.entries()) o[k]=v;
       return o;
     }
 
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      if(!form.checkValidity()){
-        form.reportValidity();
-        return;
-      }
-      try{
-        // 1) pedir public key al backend
-        const publicKey = await getPublicKey();
-        // 2) crear preferencia con datos del form
-        const payload = {...serialize(form), monto: 8000}; // <- tu precio real
-        const { preferenceId } = await createPreference(payload);
-        // 3) renderizar Wallet Brick
-        const mp = new MercadoPago(publicKey, { locale: 'es-AR' });
-        bricksBuilder = mp.bricks();
-        // Limpio contenedor por si se vuelve a enviar el form
-        document.getElementById(walletContainerId).innerHTML = "";
+    // 1) Traer la public key desde tu Apps Script (?route=public_key)
+    async function getPublicKey(){
+      const r = await fetch(WEBAPP_URL + '?route=public_key');
+      const j = await r.json();
+      if(!j.ok || !j.public_key) throw new Error('No public_key');
+      return j.public_key;
+    }
 
-        await bricksBuilder.create('wallet', walletContainerId, {
-          initialization: { preferenceId },
-          customization: {
-            texts: { valueProp: 'smart_option' }
-          },
-          callbacks: {
-            onReady: () => {}, // se cargó el botón
-            onError: (error) => {
-              console.error('Wallet error', error);
-              alert('Error al inicializar el pago. Probá nuevamente.');
-            }
-          }
-        });
-        // Listo: el usuario hace clic en el botón amarillo que se renderizó.
+    // 2) Crear preferencia en tu Apps Script (POST text/plain para evitar preflight)
+    async function createPreference(payload){
+      const r = await fetch(WEBAPP_URL + '?route=create_bricks', {
+        method: 'POST',
+        headers: {'Content-Type':'text/plain;charset=utf-8'}, // 👈 evita preflight
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if(!j.ok) throw new Error(j.error || 'No se pudo crear preferencia');
+      // el backend debe devolver { ok:true, preferenceId, orderId, init_point? }
+      return j;
+    }
+
+    // 3) Renderizar Wallet con la preferenceId
+    async function renderWallet(preferenceId){
+      if (walletController) {
+        try { await walletController.unmount(); } catch(e){}
+      }
+      walletController = await bricksBuilder.create('wallet', 'wallet_container', {
+        initialization: { preferenceId },
+        customization: {
+          // Opcional: mostrar/ocultar métodos, estilos, etc.
+          texts: { valueProp: 'smart_option' }
+        },
+        callbacks: {
+          onReady: () => console.log('Wallet ready'),
+          onError: (err) => { console.error(err); alert('Error en Wallet'); }
+        }
+      });
+    }
+
+    // 4) Flujo
+    (async function init(){
+      try{
+        const publicKey = await getPublicKey();
+        mp = new MercadoPago(publicKey, { locale: 'es-AR' });
+        bricksBuilder = mp.bricks();
       }catch(err){
         console.error(err);
-        alert(err.message || 'Error de red');
+        document.getElementById('msg').textContent = 'No se pudo inicializar Mercado Pago.';
+      }
+    })();
+
+    // 5) Submit del formulario: crea preferencia y muestra el botón Wallet
+    document.getElementById('formCompra').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      msg.textContent = 'Creando preferencia…';
+
+      try{
+        const data = serializeForm(e.currentTarget);
+        const payload = {
+          ...data,
+          monto: PRECIO_AR  // AR$
+        };
+        const pref = await createPreference(payload);
+        await renderWallet(pref.preferenceId);
+        msg.textContent = 'Elegí el método y pagá de forma segura.';
+      }catch(err){
+        console.error(err);
+        alert(err.message || 'Failed to fetch');
+        msg.textContent = 'No se pudo crear la preferencia. Probá de nuevo.';
       }
     });
   </script>
